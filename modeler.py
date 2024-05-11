@@ -1,5 +1,5 @@
 import numpy as np
-from bspy import Solid, Hyperplane, Boundary
+from bspy import Solid, Manifold, Boundary
 
 class Modeler:
     def __init__(self):
@@ -18,18 +18,18 @@ class Modeler:
     def push(self):
         self.matrixStack.append(self.matrix)    
 
-    def rotate(self, *args):
-        self.matrix = self.matrix @ self.rotation(*args)    
+    def rotate(self, axis, radians):
+        self.matrix = self.matrix @ self.rotation(axis, radians)    
     
     @staticmethod
     def rotation(axis, radians):
         indices = [
-            [[1,1], [1, 2], [2, 1], [2, 2]],
-            [[0,0], [2, 0], [0, 2], [2, 2]],
-            [[0,0], [0, 1], [1, 0], [1, 1]]
+            [[1, 1, 2, 2], [1, 2, 1, 2]],
+            [[0, 2, 0, 2], [0, 0, 2, 2]],
+            [[0, 0, 1, 1], [0, 1, 0, 1]]
         ]
         matrix = np.identity(4)
-        matrix[indices[axis]] = np.array((np.cos(radians), -np.sin(radians), np.sin(radians), np.cos(radians)))
+        matrix[indices[axis][0], indices[axis][1]] = np.array((np.cos(radians), -np.sin(radians), np.sin(radians), np.cos(radians)))
         return matrix
 
     def scale(self, *args):
@@ -46,11 +46,25 @@ class Modeler:
 
     def transform(self, *args):
         values = args if np.isscalar(args[0]) else args[0]
-        count = min(len(values), 3)
-        vector = np.zeros(4)
-        vector[:count] = values[:count]
-        vector[3] = 1.0
-        return self.matrix @ vector
+        if isinstance(values, (Solid, Boundary, Manifold)):
+            matrix = self.matrix[:3, :3]
+            matrixInverseTranspose = np.transpose(np.linalg.inv(matrix))
+            translation = self.matrix[:3, 3]
+            if isinstance(values, Solid):
+                solid = Solid(values.dimension, values.containsInfinity)
+                for boundary in values.boundaries:
+                    solid.add_boundary(Boundary(boundary.manifold.transform(matrix, matrixInverseTranspose).translate(translation), boundary.domain))
+                return solid
+            elif isinstance(values, Boundary):
+                return Boundary(values.manifold.transform(matrix, matrixInverseTranspose).translate(translation), values.domain)
+            else:
+                return values.transform(matrix, matrixInverseTranspose).translate(translation)
+        else:
+            count = min(len(values), 3)
+            vector = np.zeros(4)
+            vector[:count] = values[:count]
+            vector[3] = 1.0
+            return self.matrix @ vector
 
     def translate(self, *args):
         self.matrix = self.matrix @ self.translation(*args)
