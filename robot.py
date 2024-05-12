@@ -6,7 +6,7 @@ def add_boundaries_to_robot(robot, solid):
     for boundary in solid.boundaries:
         robot.add_boundary(boundary)
 
-def create_robot(hips, shoulder, elbow, wrist, bite):
+def create_robot(position, hips, shoulder, elbow, wrist, bite):
     robot = Solid(3, False)
     modeler = Modeler()
     base = Hyperplane.create_hypercube(((-2.0, 2.0),)*3)
@@ -16,7 +16,8 @@ def create_robot(hips, shoulder, elbow, wrist, bite):
     tooth = Hyperplane.create_hypercube(((-0.5, 0.5), (-0.2, 0.2), (0.0, 1.5)))
 
     modeler.rotate(0, -np.pi / 2)
-    add_boundaries_to_robot(robot, base)
+    modeler.translate(position)
+    add_boundaries_to_robot(robot, modeler.transform(base))
     modeler.translate(0.0, 0.0, 3.0)
     modeler.rotate(2, hips)
     add_boundaries_to_robot(robot, modeler.transform(pivot))
@@ -48,9 +49,27 @@ def create_robot(hips, shoulder, elbow, wrist, bite):
 
     return robot
 
+def robot1_parameters(t):
+    position = (4.0, 0.0, 0.0)
+    hips = (1 - t) * np.pi / 2  + t * np.pi / -4
+    shoulder = (1 - t) * np.pi / -4  + t * np.pi / -6
+    elbow = np.pi / 2 if t < 0.5 else (2 - 2 * t) * np.pi / 2 + (2 * t - 1) * 3 * np.pi / 4
+    wrist = (1 - t) * 0 + t * np.pi / 2
+    bite = 1.0 if t < 0.5 else (2 - 2 * t) * 1.0 + (2 * t - 1) * 0.5
+    return (position, hips, shoulder, elbow, wrist, bite)
+
+def robot2_parameters(t):
+    position = (-4.0, 0.0, 0.0)
+    hips = (1 - t) * np.pi / 2  + t * 6 * np.pi / 4
+    shoulder = (1 - t) * np.pi / 2  + t * 2 * np.pi / -4
+    elbow = np.pi / -2 if t < 0.5 else (2 - 2 * t) * np.pi / -2 + (2 * t - 1) * 1 * np.pi / -4
+    wrist = (1 - t) * 0 + t * np.pi / -2
+    bite = 1.0 if t < 0.5 else (2 - 2 * t) * 1.0 + (2 * t - 1) * 0.5
+    return (position, hips, shoulder, elbow, wrist, bite)
+
 if __name__ == "__main__":
     viewer = Viewer()
-    viewer.draw(create_robot(np.pi / 4, -np.pi / 4, 3 * np.pi / 4, np.pi / 2, 1.0))
-    viewer.list(create_robot(np.pi / 4, -np.pi / 4, 3 * np.pi / 4, np.pi / 2, 0.5))
-    viewer.list(create_robot(np.pi / 4, -np.pi / 7, 3 * np.pi / 4, np.pi / 3, 0.7))
+    for t in np.linspace(0.0, 1.0, 11):
+        viewer.list(create_robot(*robot1_parameters(t)))
+        viewer.list(create_robot(*robot2_parameters(t)))
     viewer.mainloop()
