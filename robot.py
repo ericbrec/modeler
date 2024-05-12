@@ -6,8 +6,10 @@ def add_boundaries_to_robot(robot, solid):
     for boundary in solid.boundaries:
         robot.add_boundary(boundary)
 
-def create_robot(position, hips, shoulder, elbow, wrist, bite):
-    robot = Solid(3, False)
+def create_robot(position, hips, shoulder, elbow, wrist, bite, robot = None):
+    if robot is None:
+        robot = Solid(3, False)
+    
     modeler = Modeler()
     base = Hyperplane.create_hypercube(((-2.0, 2.0),)*3)
     pivot = Hyperplane.create_hypercube(((-1.0, 1.0),)*3)
@@ -51,18 +53,18 @@ def create_robot(position, hips, shoulder, elbow, wrist, bite):
 
 def robot1_parameters(t):
     position = (4.0, 0.0, 0.0)
-    hips = (1 - t) * np.pi / 2  + t * np.pi / -4
-    shoulder = (1 - t) * np.pi / -4  + t * np.pi / -6
-    elbow = np.pi / 2 if t < 0.5 else (2 - 2 * t) * np.pi / 2 + (2 * t - 1) * 3 * np.pi / 4
+    hips = (1 - t) * 0 * np.pi / 2  + t * np.pi / -4
+    shoulder = (1 - t) * np.pi / -4  + t * np.pi / 4
+    elbow = (1 - t) * np.pi / 2 + t * 2 * np.pi / 4
     wrist = (1 - t) * 0 + t * np.pi / 2
     bite = 1.0 if t < 0.5 else (2 - 2 * t) * 1.0 + (2 * t - 1) * 0.5
     return (position, hips, shoulder, elbow, wrist, bite)
 
 def robot2_parameters(t):
     position = (-4.0, 0.0, 0.0)
-    hips = (1 - t) * np.pi / 2  + t * 6 * np.pi / 4
+    hips = (1 - t) * 2 * np.pi / -2  + t * 3 * np.pi / -4
     shoulder = (1 - t) * np.pi / 2  + t * 2 * np.pi / -4
-    elbow = np.pi / -2 if t < 0.5 else (2 - 2 * t) * np.pi / -2 + (2 * t - 1) * 1 * np.pi / -4
+    elbow = (1 - t) * np.pi / -2 + t * 1 * np.pi / -4
     wrist = (1 - t) * 0 + t * np.pi / -2
     bite = 1.0 if t < 0.5 else (2 - 2 * t) * 1.0 + (2 * t - 1) * 0.5
     return (position, hips, shoulder, elbow, wrist, bite)
@@ -70,6 +72,8 @@ def robot2_parameters(t):
 if __name__ == "__main__":
     viewer = Viewer()
     for t in np.linspace(0.0, 1.0, 11):
-        viewer.list(create_robot(*robot1_parameters(t)))
-        viewer.list(create_robot(*robot2_parameters(t)))
+        robot = None
+        robot = create_robot(*robot1_parameters(t))
+        robot = create_robot(*robot2_parameters(t), robot)
+        viewer.list(robot)
     viewer.mainloop()
