@@ -1,5 +1,5 @@
 import numpy as np
-from bspy import Solid, Hyperplane, Viewer
+from bspy import Solid, Boundary, Hyperplane, Viewer
 from modeler import Modeler
 
 def add_boundaries_to_robot(robot, solid):
@@ -53,7 +53,7 @@ def create_robot(position, hips, shoulder, elbow, wrist, bite, robot = None):
 
 def robot1_parameters(t):
     position = (4.0, 0.0, 0.0)
-    hips = (1 - t) * 0 * np.pi / 2  + t * np.pi / -4
+    hips = (1 - t) * np.pi / 5  + t * np.pi / -4
     shoulder = (1 - t) * np.pi / -4  + t * np.pi / 4
     elbow = (1 - t) * np.pi / 2 + t * 2 * np.pi / 4
     wrist = (1 - t) * 0 + t * np.pi / 2
@@ -68,6 +68,73 @@ def robot2_parameters(t):
     wrist = (1 - t) * 0 + t * np.pi / -2
     bite = 1.0 if t < 0.5 else (2 - 2 * t) * 1.0 + (2 * t - 1) * 0.5
     return (position, hips, shoulder, elbow, wrist, bite)
+
+"""
+def add_time_dimension(solidFunction, t1, t2, samples):
+    assert(samples >= 2)
+    solid = solidFunction(t1)
+    solidPlusTime = Solid(solid.dimension + 1, solid.containsInfinity)
+
+    # Start with t1 solid cap
+    cap = Hyperplane.create_axis_aligned(solidPlusTime.dimension, solidPlusTime.dimension - 1, -t1, True)
+    solidPlusTime.boundaries.append(Boundary(extrudedHyperplane, solid))
+
+    # Interpolate boundaries along the path
+    previousSolid = solid
+    samples -= 1 # Simplify arithmetic
+    for sample in range(1, samples + 1):
+        t = (t1 * (samples - sample) + t2 * sample) / samples
+        solid = solidFunction(t)
+        tangent = nextPoint - point
+        extent = tangent[solid.dimension]
+        tangent = tangent / extent
+        # Interpolate each boundary.
+        for boundary in solid.boundaries:
+            # Construct a normal orthogonal to both the boundary tangent space and the path tangent
+            extruded_normal = np.full((solidPlusTime.dimension), 0.0)
+            extruded_normal[0:solid.dimension] = boundary.manifold._normal[:]
+            extruded_normal[solid.dimension] = -np.dot(boundary.manifold._normal, tangent[0:solid.dimension])
+            extruded_normal = extruded_normal / np.linalg.norm(extruded_normal)
+            # Construct a point that adds the boundary point to the path point
+            extruded_point = np.full((solidPlusTime.dimension), 0.0)
+            extruded_point[0:solid.dimension] = boundary.manifold._point[:]
+            extruded_point += point
+            # Combine the boundary tangent space and the path tangent
+            extruded_tangentSpace = np.full((solidPlusTime.dimension, solid.dimension), 0.0)
+            if solid.dimension > 1:
+                extruded_tangentSpace[0:solid.dimension, 0:solid.dimension-1] = boundary.manifold._tangentSpace[:,:]
+            extruded_tangentSpace[:, solid.dimension-1] = tangent[:]
+            extrudedHyperplane = Hyperplane(extruded_normal, extruded_point, extruded_tangentSpace)
+            # Construct a domain for the extruded boundary
+            if boundary.domain.dimension > 0:
+                # Extrude the boundary's domain to include path domain
+                domainPath = []
+                domainPoint = np.full((solid.dimension), 0.0)
+                domainPath.append(domainPoint)
+                domainPoint = np.full((solid.dimension), 0.0)
+                domainPoint[solid.dimension-1] = extent
+                domainPath.append(domainPoint)
+                extrudedDomain = extrude_solid(boundary.domain, domainPath)
+            else:
+                extrudedDomain = Solid(solid.dimension, False)
+                extrudedDomain.boundaries.append(Boundary(hyperplane_1D(-1.0, 0.0), Solid(0, True)))
+                extrudedDomain.boundaries.append(Boundary(hyperplane_1D(1.0, extent), Solid(0, True)))
+            # Add extruded boundary
+            solidPlusTime.boundaries.append(Boundary(extrudedHyperplane, extrudedDomain))
+        
+        # Move onto the next point
+        point = nextPoint
+
+    # Add end cap boundaries
+    extrudedHyperplane = Hyperplane.create_axis_aligned(solidPlusTime.dimension, solid.dimension, 0.0, True)
+    extrudedHyperplane = extrudedHyperplane.translate(path[0])
+    solidPlusTime.boundaries.append(Boundary(extrudedHyperplane, solid))
+    extrudedHyperplane = Hyperplane.create_axis_aligned(solidPlusTime.dimension, solid.dimension, 0.0, False)
+    extrudedHyperplane = extrudedHyperplane.translate(path[-1])
+    solidPlusTime.boundaries.append(Boundary(extrudedHyperplane, solid))
+
+    return solidPlusTime
+"""
 
 if __name__ == "__main__":
     viewer = Viewer()
