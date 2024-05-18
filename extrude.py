@@ -7,7 +7,7 @@ def hyperplane_1D(normal, offset):
     normalizedNormal = normalizedNormal / np.linalg.norm(normalizedNormal)
     return Hyperplane(normalizedNormal, offset * normalizedNormal, 0.0)
 
-def extrude_solid(solid, path):
+def extrude_path(solid, path):
     assert len(path) > 1
     assert solid.dimension+1 == len(path[0])
     
@@ -27,17 +27,17 @@ def extrude_solid(solid, path):
         for boundary in solid.boundaries:
             # Construct a normal orthogonal to both the boundary tangent space and the path tangent
             extruded_normal = np.zeros(extrusion.dimension)
-            extruded_normal[0:solid.dimension] = boundary.manifold._normal[:]
-            extruded_normal[solid.dimension] = -np.dot(boundary.manifold._normal, tangent[0:solid.dimension])
+            extruded_normal[:solid.dimension] = boundary.manifold._normal[:]
+            extruded_normal[solid.dimension] = -np.dot(boundary.manifold._normal, tangent[:solid.dimension])
             extruded_normal = extruded_normal / np.linalg.norm(extruded_normal)
             # Construct a point that adds the boundary point to the path point
             extruded_point = np.zeros(extrusion.dimension)
-            extruded_point[0:solid.dimension] = boundary.manifold._point[:]
+            extruded_point[:solid.dimension] = boundary.manifold._point[:]
             extruded_point += point
             # Combine the boundary tangent space and the path tangent
             extruded_tangentSpace = np.zeros((extrusion.dimension, solid.dimension))
             if solid.dimension > 1:
-                extruded_tangentSpace[0:solid.dimension, 0:solid.dimension-1] = boundary.manifold._tangentSpace[:,:]
+                extruded_tangentSpace[:solid.dimension, :solid.dimension-1] = boundary.manifold._tangentSpace[:,:]
             extruded_tangentSpace[:, solid.dimension-1] = tangent[:]
             extrudedHyperplane = Hyperplane(extruded_normal, extruded_point, extruded_tangentSpace)
             # Construct a domain for the extruded boundary
@@ -49,7 +49,7 @@ def extrude_solid(solid, path):
                 domainPoint = np.zeros(solid.dimension)
                 domainPoint[solid.dimension-1] = extent
                 domainPath.append(domainPoint)
-                extrudedDomain = extrude_solid(boundary.domain, domainPath)
+                extrudedDomain = extrude_path(boundary.domain, domainPath)
             else:
                 extrudedDomain = Solid(solid.dimension, False)
                 extrudedDomain.add_boundary(Boundary(hyperplane_1D(-1.0, 0.0), Solid(0, True)))
@@ -81,6 +81,7 @@ def extrude_time(solidFunction, t1, t2, samples):
 
     # Interpolate boundaries along time dimension.
     samples -= 1 # Simplify arithmetic
+    t = t1
     dT = 1.0 / samples
     for sample in range(1, samples + 1):
         # Interpolate each boundary.
@@ -88,25 +89,26 @@ def extrude_time(solidFunction, t1, t2, samples):
             manifold = boundary.manifold
             # Construct the normal
             extruded_normal = np.zeros(extrusion.dimension)
-            extruded_normal[0:solid.dimension] = manifold._normal[:]
-            extruded_normal[solid.dimension] = -np.dot(manifold._normal, manifold._dP) / dT
+            extruded_normal[:solid.dimension] = manifold._normal[:]
+            extruded_normal[solid.dimension] = -np.dot(manifold._normal, manifold._dP)
             extruded_normal = extruded_normal / np.linalg.norm(extruded_normal)
             # Construct the point
             extruded_point = np.zeros(extrusion.dimension)
-            extruded_point[0:solid.dimension] = manifold._point[:]
+            extruded_point[:solid.dimension] = manifold._point[:]
+            extruded_point[solid.dimension] = t
             # Construct the tangent space
             extruded_tangentSpace = np.zeros((extrusion.dimension, solid.dimension))
-            extruded_tangentSpace[0:solid.dimension, 0:solid.dimension-1] = manifold._tangentSpace[:,:]
+            extruded_tangentSpace[:solid.dimension, :solid.dimension-1] = manifold._tangentSpace[:,:]
             extruded_tangentSpace[:solid.dimension, solid.dimension-1] = manifold._dP
-            extruded_tangentSpace[solid.dimension, solid.dimension-1] = dT
+            extruded_tangentSpace[solid.dimension, solid.dimension-1] = 1.0
             # Construct the domain (extrude existing domain to add time)
             domainPath = []
             domainPoint = np.zeros(solid.dimension)
             domainPath.append(domainPoint)
             domainPoint = np.zeros(solid.dimension)
-            domainPoint[solid.dimension-1] = 1.0
+            domainPoint[solid.dimension-1] = dT
             domainPath.append(domainPoint)
-            extrudedDomain = extrude_solid(boundary.domain, domainPath)
+            extrudedDomain = extrude_path(boundary.domain, domainPath)
             # Add extruded boundary
             extrudedHyperplane = Hyperplane(extruded_normal, extruded_point, extruded_tangentSpace)
             extrusion.add_boundary(Boundary(extrudedHyperplane, extrudedDomain))

@@ -96,7 +96,9 @@ def bar(t):
     modeler = Modeler()
     base = Hyperplane.create_hypercube(((-2.0, 2.0),)*3)
 
-    modeler.translate((t, 0.0, 0.0), (1.0, 0.0, 0.0))
+    #modeler.translate((2.0 * t, 0.0, 0.0), (2.0, 0.0, 0.0))
+    #modeler.scale((1.0 + 2.0 * t, 1.0, 1.0), (2.0, 0.0, 0.0))
+    modeler.rotate(1, t * np.pi / 4, np.pi / 4)
     add_boundaries_to_robot(solid, modeler.transform(base))
 
     return solid
@@ -105,9 +107,9 @@ if __name__ == "__main__":
     viewer = Viewer()
     viewer.set_background_color(np.array((1, 1, 1, 1),np.float32))
 
-    solid = extrude.extrude_time(bar, 0, 1, 3)
+    solid = extrude.extrude_time(robot1, 0.0, 1.0, 11)
     hyperplane = Hyperplane.create_axis_aligned(solid.dimension, 3, 0.0)
-    for t in np.linspace(0.0, 1.0, 3):
+    for t in np.linspace(0.02, 1.0, 10):
         hyperplane._point = t * hyperplane._normal
         slice = solid.slice(hyperplane)
         viewer.list(slice, fillColor=np.array((0, 1, 0, 1),np.float32))
