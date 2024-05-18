@@ -107,9 +107,9 @@ if __name__ == "__main__":
     viewer = Viewer()
     viewer.set_background_color(np.array((1, 1, 1, 1),np.float32))
 
-    solid = extrude.extrude_time(robot1, 0.0, 1.0, 11)
+    solid = extrude.extrude_time(robot1, 0.0, 1.0, 8)
     hyperplane = Hyperplane.create_axis_aligned(solid.dimension, 3, 0.0)
-    for t in np.linspace(0.02, 1.0, 10):
+    for t in np.linspace(0.02, 0.98, 10):
         hyperplane._point = t * hyperplane._normal
         slice = solid.slice(hyperplane)
         viewer.list(slice, fillColor=np.array((0, 1, 0, 1),np.float32))

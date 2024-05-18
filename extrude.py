@@ -70,8 +70,8 @@ def extrude_path(solid, path):
 
     return extrusion
 
-def extrude_time(solidFunction, t1, t2, samples):
-    assert(samples >= 2)
+def extrude_time(solidFunction, t1, t2, interiorSamples):
+    assert(interiorSamples >= 1)
 
     # Start with t1 solid cap.
     solid = solidFunction(t1)
@@ -80,10 +80,12 @@ def extrude_time(solidFunction, t1, t2, samples):
     extrusion.add_boundary(Boundary(cap, solid))
 
     # Interpolate boundaries along time dimension.
-    samples -= 1 # Simplify arithmetic
-    t = t1
-    dT = 1.0 / samples
-    for sample in range(1, samples + 1):
+    dT = 0.5 / interiorSamples
+    for sample in range(interiorSamples):
+        # Compute sample.
+        t = dT * (1 + 2 * sample)
+        solid = solidFunction(t)
+
         # Interpolate each boundary.
         for boundary in solid.boundaries:
             manifold = boundary.manifold
@@ -104,6 +106,7 @@ def extrude_time(solidFunction, t1, t2, samples):
             # Construct the domain (extrude existing domain to add time)
             domainPath = []
             domainPoint = np.zeros(solid.dimension)
+            domainPoint[solid.dimension-1] = -dT
             domainPath.append(domainPoint)
             domainPoint = np.zeros(solid.dimension)
             domainPoint[solid.dimension-1] = dT
@@ -114,10 +117,9 @@ def extrude_time(solidFunction, t1, t2, samples):
             extrusion.add_boundary(Boundary(extrudedHyperplane, extrudedDomain))
         
         # Move onto the next time
-        t = (t1 * (samples - sample) + t2 * sample) / samples
-        solid = solidFunction(t)
 
     # End with t2 solid cap.
+    solid = solidFunction(t2)
     cap = Hyperplane.create_axis_aligned(extrusion.dimension, solid.dimension, t2, False)
     extrusion.add_boundary(Boundary(cap, solid))
     
