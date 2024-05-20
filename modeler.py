@@ -4,28 +4,32 @@ from bspy import Solid, Manifold, Boundary
 class Modeler:
     def __init__(self):
         self.matrixStack = []
-        self.matrix = np.identity(4)
-        self.dMatrix = np.zeros((4, 4))
-        self.dMatrix[3,3] = 1.0
+        self.reset()
     
     def __call__(self):
         return self.matrix
+
+    def reset(self):
+        self.matrix = np.identity(4)
+        self.dMatrix = np.zeros((4, 4))
+        self.dMatrix[3,3] = 1.0
     
     def pop(self):
         if self.matrixStack:
             self.matrix, self.dMatrix = self.matrixStack.pop()
         else:
-            self.matrix = np.identity(4)
-            self.dMatrix = np.zeros((4, 4))
-            self.dMatrix[3,3] = 1.0
+            self.reset()
 
     def push(self):
         self.matrixStack.append((self.matrix, self.dMatrix))
 
     def multiply(self, matrix, dMatrix):
-        self.matrix = self.matrix @ matrix
-        self.dMatrix[:3,:3] = self.dMatrix[:3,:3] @ matrix[:3,:3] + self.matrix[:3,:3] @ dMatrix[:3,:3]
-        self.dMatrix[:3,3] += self.dMatrix[:3,:3] @ matrix[:3, 3] + self.matrix[:3,:3] @ dMatrix[:3, 3]
+        newMatrix = self.matrix @ matrix
+        newDMatrix = self.dMatrix[:3,:3] @ matrix[:3,:3] + self.matrix[:3,:3] @ dMatrix[:3,:3]
+        newDVector = self.dMatrix[:3,:3] @ matrix[:3, 3] + self.matrix[:3,:3] @ dMatrix[:3, 3]
+        self.matrix = newMatrix
+        self.dMatrix[:3,:3] = newDMatrix
+        self.dMatrix[:3,3] += newDVector
 
     def rotate(self, axis, radians, dRadians=0.0):
         self.multiply(*self.rotation(axis, radians, dRadians))
