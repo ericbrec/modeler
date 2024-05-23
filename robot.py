@@ -104,27 +104,59 @@ def bar(t):
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO, format='%(asctime)s:%(levelname)s:%(module)s:%(lineno)d:%(message)s', datefmt='%H:%M:%S')
     np.set_printoptions(suppress=True)
-    viewer = Viewer()
-    viewer.set_background_color(np.array((1, 1, 1, 1),np.float32))
 
-    logging.info("Render robot animation")
-    for t in np.linspace(0.02, 0.98, 11):
-        robot = create_robot(robot1_parameters, t)
-        robot = create_robot(robot2_parameters, t, robot)
-        viewer.list(robot)
+    option = "draw"
+    if option == "build":
+        logging.info("Extrude robot1")
+        extruded1 = extrude.extrude_time(robot1, 0.6, 1.0, 3)
+        logging.info("Extrude robot2")
+        extruded2 = extrude.extrude_time(robot2, 0.6, 1.0, 3)
+        logging.info("Intersect robots")
+        intersection = extruded1.intersection(extruded2)
+        logging.info("Save intersection")
+        Solid.save(r"C:\Users\ericb\OneDrive\Desktop\robots_intersection.json", intersection)
 
-    logging.info("Extrude robot1")
-    extruded1 = extrude.extrude_time(robot1, 0.0, 1.0, 8)
-    logging.info("Extrude robot2")
-    extruded2 = extrude.extrude_time(robot2, 0.0, 1.0, 8)
-    logging.info("Intersect robots")
-    intersection = extruded1.intersection(extruded2)
-    logging.info("Slice intersection")
-    Hyperplane.maxAlignment = 0.9999
-    hyperplane = Hyperplane.create_axis_aligned(4, 3, 0.0)
-    for t in np.linspace(0.02, 0.98, 11):
-        hyperplane._point = t * hyperplane._normal
-        slice = intersection.slice(hyperplane)
-        logging.info(f"Slice {t}")
-        viewer.list(slice, fillColor=np.array((0, 1, 0, 1),np.float32))
-    viewer.mainloop()
+    elif option == "test":
+        viewer = Viewer()
+        viewer.set_background_color(np.array((1, 1, 1, 1),np.float32))
+        logging.info("Extrude robot1")
+        extruded1 = extrude.extrude_time(robot1, 0.0, 1.0, 8)
+        logging.info("Extrude robot2")
+        extruded2 = extrude.extrude_time(robot2, 0.0, 1.0, 8)
+        logging.info("Slice intersection")
+        Hyperplane.maxAlignment = 0.9999
+        hyperplane = Hyperplane.create_axis_aligned(4, 3, 0.0)
+        for t in np.linspace(0.02, 0.98, 11):
+            hyperplane._point = t * hyperplane._normal
+            slice = extruded1.slice(hyperplane)
+            logging.info(f"Slice1 {t:.1f}")
+            viewer.list(slice, f"Slice1 {t:.1f}")
+        for t in np.linspace(0.02, 0.98, 11):
+            hyperplane._point = t * hyperplane._normal
+            slice = extruded2.slice(hyperplane)
+            logging.info(f"Slice2 {t:.1f}")
+            viewer.list(slice, f"Slice2 {t:.1f}")
+        viewer.mainloop()
+
+    elif option == "draw":
+        viewer = Viewer()
+        viewer.set_background_color(np.array((1, 1, 1, 1),np.float32))
+
+        logging.info("Render robot animation")
+        for t in np.linspace(0.0, 1.0, 11):
+            robot = create_robot(robot1_parameters, t)
+            robot = create_robot(robot2_parameters, t, robot)
+            viewer.list(robot, f"Robots {t:.1f}")
+        
+        logging.info("Load intersection")
+        [intersection] = Solid.load(r"C:\Users\ericb\OneDrive\Desktop\robots_intersection.json")
+
+        logging.info("Slice intersection")
+        Hyperplane.maxAlignment = 0.9999
+        hyperplane = Hyperplane.create_axis_aligned(4, 3, 0.0)
+        for t in np.linspace(0.62, 0.98, 6):
+            hyperplane._point = t * hyperplane._normal
+            slice = intersection.slice(hyperplane)
+            logging.info(f"Intersect {t:.1f}")
+            viewer.list(slice, f"Intersect {t:.1f}")
+        viewer.mainloop()
