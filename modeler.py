@@ -21,7 +21,7 @@ class Modeler:
             self.reset()
 
     def push(self):
-        self.matrixStack.append((self.matrix, self.dMatrix))
+        self.matrixStack.append((self.matrix.copy(), self.dMatrix.copy()))
 
     def multiply(self, matrix, dMatrix):
         newMatrix = self.matrix @ matrix
