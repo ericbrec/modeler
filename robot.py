@@ -2,7 +2,7 @@ import logging
 import numpy as np
 from bspy import Solid, Boundary, Hyperplane, Viewer
 from modeler import Modeler
-import extrude
+import utils
 
 def create_robot(parameters, t, robot = None):
     if robot is None:
@@ -108,9 +108,9 @@ if __name__ == "__main__":
     option = "draw"
     if option == "build":
         logging.info("Extrude robot1")
-        extruded1 = extrude.extrude_time(robot1, 0.6, 1.0, 3)
+        extruded1 = utils.extrude_time(robot1, 0.6, 1.0, 3)
         logging.info("Extrude robot2")
-        extruded2 = extrude.extrude_time(robot2, 0.6, 1.0, 3)
+        extruded2 = utils.extrude_time(robot2, 0.6, 1.0, 3)
         logging.info("Intersect robots")
         intersection = extruded1.intersection(extruded2)
         logging.info("Save intersection")
@@ -120,9 +120,9 @@ if __name__ == "__main__":
         viewer = Viewer()
         viewer.set_background_color(np.array((1, 1, 1, 1),np.float32))
         logging.info("Extrude robot1")
-        extruded1 = extrude.extrude_time(robot1, 0.0, 1.0, 8)
+        extruded1 = utils.extrude_time(robot1, 0.0, 1.0, 8)
         logging.info("Extrude robot2")
-        extruded2 = extrude.extrude_time(robot2, 0.0, 1.0, 8)
+        extruded2 = utils.extrude_time(robot2, 0.0, 1.0, 8)
         logging.info("Slice intersection")
         Hyperplane.maxAlignment = 0.9999
         hyperplane = Hyperplane.create_axis_aligned(4, 3, 0.0)
