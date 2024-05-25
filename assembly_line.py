@@ -33,6 +33,8 @@ def create_robot(parameters, t, robot = None):
     jaw = Hyperplane.create_hypercube(((0.09, 0.31), (-0.9, -0.8), (-0.35, 0.35)))
     tooth = Hyperplane.create_hypercube(((0.09, 0.31), (-1.4, -0.9), (-0.02, 0.02)))
 
+    adapter = Hyperplane.create_hypercube(((-0.2, 0.2),(-0.8, -0.4), (1.25, 1.75)))
+
     add_boundaries(robot, modeler, nearBase)
     add_boundaries(robot, modeler, farBase)
     modeler.translate((travel, 0.0, 0.0), (dTravel, 0.0, 0.0))
@@ -46,6 +48,9 @@ def create_robot(parameters, t, robot = None):
     modeler.pop()
     modeler.translate((0.0, 0.0, -bite), (0.0, 0.0, -dBite))
     add_boundaries(robot, modeler, tooth)
+
+    modeler.reset()
+    add_boundaries(robot, modeler, adapter)
 
     return robot
 
@@ -78,7 +83,10 @@ def create_router(parameters, t, router = None):
     base = utils.extrude_path(base, ((0.0, 0.0, -1.6), (0.0, 0.0, 0.4)))
     antenna = utils.create_faceted_solid_from_points(((-0.1, -0.08), (-0.1, 0.08), (1.4, 0.02), (1.4, -0.02)))
     antenna = utils.extrude_path(antenna, ((0.0, 0.0, -0.05), (0.0, 0.0, 0.05)))
-    adapter = Hyperplane.create_hypercube(((-0.2, 0.2),(-0.8, -0.4), (1.25, 1.75)))
+
+    outer = Hyperplane.create_hypercube(((-0.25, 0.25), (-0.3, 0.3)))
+    inner = Hyperplane.create_hypercube(((-0.22, 0.22), (-0.27, 0.27)))
+    box = utils.extrude_path(outer - inner, ((0.0, 0.0, 0.0), (0.0, 0.0, 0.2)))
 
     add_boundaries(router, modeler, base)
     modeler.push()
@@ -91,8 +99,9 @@ def create_router(parameters, t, router = None):
     modeler.rotate(2, 5 * np.pi / 8)
     add_boundaries(router, modeler, antenna)
     modeler.pop()
-    modeler.translate(position, dPosition)
-    add_boundaries(router, modeler, adapter)
+    modeler.translate((1.7, -0.8, -0.6))
+    modeler.rotate(0, -np.pi/ 2)
+    add_boundaries(router, modeler, box)
 
     return router
 
@@ -112,7 +121,7 @@ if __name__ == "__main__":
         logging.info("Extrude robot1")
         extruded1 = utils.extrude_time(robot, 0.6, 1.0, 3)
         logging.info("Extrude robot2")
-        extruded2 = utils.extrude_time(robot2, 0.6, 1.0, 3)
+        extruded2 = utils.extrude_time(robot, 0.6, 1.0, 3)
         logging.info("Intersect robots")
         intersection = extruded1.intersection(extruded2)
         logging.info("Save intersection")
