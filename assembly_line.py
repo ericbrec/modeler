@@ -30,7 +30,7 @@ def create_robot(parameters, t, robot = None):
     farBase = Hyperplane.create_hypercube(((-2.0, 2.0),(1.0, 1.1), (2.0, 2.2)))
     crossBeam = Hyperplane.create_hypercube(((-0.1, 0.1),(1.1, 1.4), (-2.2, 2.2)))
     arm = Hyperplane.create_hypercube(((0.1, 0.3), (-0.8, 1.2), (-0.2, 0.2)))
-    jaw = Hyperplane.create_hypercube(((0.09, 0.31), (-0.9, -0.8), (-0.25, 0.25)))
+    jaw = Hyperplane.create_hypercube(((0.09, 0.31), (-0.9, -0.8), (-0.35, 0.35)))
     tooth = Hyperplane.create_hypercube(((0.09, 0.31), (-1.4, -0.9), (-0.02, 0.02)))
 
     add_boundaries(robot, modeler, nearBase)
@@ -53,37 +53,59 @@ def robot_parameters(t):
     travel = (1 - t) * -2.0 + t * 2.0
     crossing = (1 - t) * -1.8 + t * 1.8
     height = (1 - t) * 0.0  + t * 1.8
-    bite = 0.25 if t < 0.5 else (2 - 2 * t) * 0.25 + (2 * t - 1) * 0.02
+    bite = 0.35 if t < 0.5 else (2 - 2 * t) * 0.35 + (2 * t - 1) * 0.02
     return (travel, crossing, height, bite)
 
 def robot(t):
     return create_robot(robot_parameters, t)
 
-def robot2_parameters(t):
-    position = (-4.0, 0.0, 0.0)
-    hips = (1 - t) * 2 * np.pi / -2  + t * 3 * np.pi / -4
-    shoulder = (1 - t) * np.pi / 2  + t * 2 * np.pi / -4
-    elbow = (1 - t) * np.pi / -2 + t * 1 * np.pi / -4
-    wrist = (1 - t) * 0 + t * np.pi / -2
-    bite = 1.0 if t < 0.5 else (2 - 2 * t) * 1.0 + (2 * t - 1) * 0.5
-    return (position, hips, shoulder, elbow, wrist, bite)
+def create_router(parameters, t, router = None):
+    if router is None:
+        router = Solid(3, False)
+    
+    h = 0.0001
+    if callable(parameters):
+        position = parameters(t)
+        dPosition = parameters(t + h)
+    else:
+        position = parameters
+        dPosition = parameters
 
-def robot2(t):
-    return create_robot(robot2_parameters, t)
+    dPosition = (np.array(dPosition) - np.array(position)) / h
 
-def bar(t):
     modeler = Modeler()
-    base = Hyperplane.create_hypercube(((-2.0, 2.0),)*3)
-    #modeler.translate((2.0 * t, 0.0, 0.0), (2.0, 0.0, 0.0))
-    #modeler.scale((1.0 + 2.0 * t, 1.0, 1.0), (2.0, 0.0, 0.0))
-    modeler.rotate(1, t * np.pi / 4, np.pi / 4)
-    return modeler.transform(base)
+    base = Hyperplane.create_hypercube(((-1.3, 1.3), (-0.8, -0.2), (-1.6, 0.4)))
+    antenna = Hyperplane.create_hypercube(((-0.1, 1.4),(-0.08, 0.08), (-0.05, 0.05)))
+    adapter = Hyperplane.create_hypercube(((-0.2, 0.2),(-0.8, -0.4), (0.75, 1.25)))
+
+    add_boundaries(router, modeler, base)
+    modeler.push()
+    modeler.translate((-1.2, -0.2, 0.42))
+    modeler.rotate(2, np.pi / 4)
+    add_boundaries(router, modeler, antenna)
+    modeler.pop()
+    modeler.push()
+    modeler.translate((-1.2, -0.2, -1.62))
+    modeler.rotate(2, 3 * np.pi / 4)
+    add_boundaries(router, modeler, antenna)
+    modeler.pop()
+    modeler.translate(position, dPosition)
+    add_boundaries(router, modeler, adapter)
+
+    return router
+
+def router_parameters(t):
+    position = (0.0, 0.0, 0.0)
+    return position
+
+def router(t):
+    return create_router(router_parameters, t)
 
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO, format='%(asctime)s:%(levelname)s:%(module)s:%(lineno)d:%(message)s', datefmt='%H:%M:%S')
     np.set_printoptions(suppress=True)
 
-    option = "test"
+    option = "draw"
     if option == "build":
         logging.info("Extrude robot1")
         extruded1 = extrude.extrude_time(robot, 0.6, 1.0, 3)
@@ -115,6 +137,7 @@ if __name__ == "__main__":
         viewer.set_background_color(np.array((1, 1, 1, 1),np.float32))
 
         logging.info("Render robot animation")
-        for t in np.linspace(0.0, 1.0, 11):
-            viewer.list(robot(t), f"Robot {t:.1f}")
+        t = 0.5
+        viewer.list(robot(t), f"Robot {t:.1f}")
+        viewer.list(router(t), f"Router {t:.1f}")
         viewer.mainloop()
