@@ -65,11 +65,30 @@ def create_robot(parameters, t, robot = None):
     return robot
 
 def robot_parameters(t):
-    travel = (1 - t) * -2.0 + t * 2.0
-    crossing = (1 - t) * -1.8 + t * 1.8
-    height = (1 - t) * 0.0  + t * 1.8
-    bite = 0.35 if t < 0.5 else (2 - 2 * t) * 0.35 + (2 * t - 1) * 0.02
-    position = (0.0, -0.6, 1.5)
+    if t < 0.5:
+        travel = interpolate(t, (0.0, -2.0), (0.5, -0.2))
+        crossing = interpolate(t, (0.0, -1.8), (0.5, 1.5))
+        height = interpolate(t, (0.0, 1.8), (0.5, 0.8))
+        bite = interpolate(t, (0.0, 0.35), (0.5, 0.27))
+        position = (0.0, -0.6, 1.5)
+    else:
+        travel = interpolate(t, (0.5, -0.2), (1.0, 1.5))
+        crossing = interpolate(t, (0.5, 1.5), (1.0, -0.6))
+        if t < 0.75:
+            height = interpolate(t, (0.5, 0.8), (0.75, 1.2))
+            position = (
+                interpolate(t, (0.5, 0.0), (1.0, 1.7)), 
+                interpolate(t, (0.5, -0.6), (0.75, -0.3)), 
+                interpolate(t, (0.5, 1.5), (1.0, -0.6))
+                )
+        else:
+            height = interpolate(t, (0.75, 1.2), (1.0, 0.8))
+            position = (
+                interpolate(t, (0.5, 0.0), (1.0, 1.7)), 
+                interpolate(t, (0.75, -0.3), (1.0, -0.6)), 
+                interpolate(t, (0.5, 1.5), (1.0, -0.6))
+                )
+    bite = interpolate(t, (0.5, 0.27), (1., 0.27))
     return (travel, crossing, height, bite, position)
 
 def robot(t):
@@ -103,12 +122,12 @@ def create_router(parameters, t, router = None):
     add_boundaries(router, modeler, base)
     modeler.push()
     modeler.translate((-1.1, -0.3, 0.42))
-    modeler.rotate(2, np.pi / 4)
+    modeler.rotate(2, np.pi / 16)
     add_boundaries(router, modeler, antenna)
     modeler.pop()
     modeler.push()
     modeler.translate((-1.1, -0.3, -1.62))
-    modeler.rotate(2, 5 * np.pi / 8)
+    modeler.rotate(2, np.pi / 16)
     add_boundaries(router, modeler, antenna)
     modeler.pop()
     modeler.translate((1.7, -0.8, -0.6))
@@ -159,7 +178,7 @@ if __name__ == "__main__":
         viewer.set_background_color(np.array((1, 1, 1, 1),np.float32))
 
         logging.info("Render robot animation")
-        for t in np.linspace(0.0, 1.0, 10):
+        for t in np.linspace(0.0, 1.0, 11):
             #viewer.list(robot(t), f"Robot {t:.1f}")
             viewer.list(router(t, robot(t)), f"Router {t:.1f}")
         viewer.mainloop()
