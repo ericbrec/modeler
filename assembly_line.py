@@ -4,6 +4,14 @@ from bspy import Solid, Boundary, Hyperplane, Viewer
 from modeler import Modeler
 import utils
 
+def interpolate(t, start, end):
+    if t < start[0]:
+        return start[1]
+    elif t > end[0]:
+        return end[1]
+    else:
+        return (start[1] * (end[0] - t) + end[1] * (t - start[0])) / (end[0] - start[0])
+
 def add_boundaries(solid, modeler, part):
     for boundary in modeler.transform(part).boundaries:
         solid.add_boundary(boundary)
@@ -14,16 +22,17 @@ def create_robot(parameters, t, robot = None):
     
     h = 0.0001
     if callable(parameters):
-        travel, crossing, height, bite = parameters(t)
-        dTravel, dCrossing, dHeight, dBite = parameters(t + h)
+        travel, crossing, height, bite, position = parameters(t)
+        dTravel, dCrossing, dHeight, dBite, dPosition = parameters(t + h)
     else:
-        travel, crossing, height, bite = parameters
-        dTravel, dCrossing, dHeight, dBite = parameters
+        travel, crossing, height, bite, position = parameters
+        dTravel, dCrossing, dHeight, dBite, dPosition = parameters
 
     dTravel = (dTravel - travel) / h
     dCrossing = (dCrossing - crossing) / h
     dHeight = (dHeight - height) / h
     dBite = (dBite - bite) / h
+    dPosition = (np.array(dPosition) - np.array(position)) / h
 
     modeler = Modeler()
     nearBase = Hyperplane.create_hypercube(((-2.0, 2.0),(1.0, 1.1), (-2.2, -2.0)))
@@ -33,7 +42,7 @@ def create_robot(parameters, t, robot = None):
     jaw = Hyperplane.create_hypercube(((0.09, 0.31), (-0.9, -0.8), (-0.35, 0.35)))
     tooth = Hyperplane.create_hypercube(((0.09, 0.31), (-1.4, -0.9), (-0.02, 0.02)))
 
-    adapter = Hyperplane.create_hypercube(((-0.2, 0.2),(-0.8, -0.4), (1.25, 1.75)))
+    adapter = Hyperplane.create_hypercube(((-0.2, 0.2),(-0.2, 0.2), (-0.25, 0.25)))
 
     add_boundaries(robot, modeler, nearBase)
     add_boundaries(robot, modeler, farBase)
@@ -50,6 +59,7 @@ def create_robot(parameters, t, robot = None):
     add_boundaries(robot, modeler, tooth)
 
     modeler.reset()
+    modeler.translate(position, dPosition)
     add_boundaries(robot, modeler, adapter)
 
     return robot
@@ -59,7 +69,8 @@ def robot_parameters(t):
     crossing = (1 - t) * -1.8 + t * 1.8
     height = (1 - t) * 0.0  + t * 1.8
     bite = 0.35 if t < 0.5 else (2 - 2 * t) * 0.35 + (2 * t - 1) * 0.02
-    return (travel, crossing, height, bite)
+    position = (0.0, -0.6, 1.5)
+    return (travel, crossing, height, bite, position)
 
 def robot(t):
     return create_robot(robot_parameters, t)
@@ -70,13 +81,13 @@ def create_router(parameters, t, router = None):
     
     h = 0.0001
     if callable(parameters):
-        position = parameters(t)
-        dPosition = parameters(t + h)
+        travel = parameters(t)
+        dTravel = parameters(t + h)
     else:
-        position = parameters
-        dPosition = parameters
+        travel = parameters
+        dTravel = parameters
 
-    dPosition = (np.array(dPosition) - np.array(position)) / h
+    dTravel = (dTravel - travel) / h
 
     modeler = Modeler()
     base = utils.create_faceted_solid_from_points(((-1.3, -0.8), (-1.3, -0.2), (1.3, -0.6), (1.3, -0.8)))
@@ -88,6 +99,7 @@ def create_router(parameters, t, router = None):
     inner = Hyperplane.create_hypercube(((-0.22, 0.22), (-0.27, 0.27)))
     box = utils.extrude_path(outer - inner, ((0.0, 0.0, 0.0), (0.0, 0.0, 0.2)))
 
+    modeler.translate((travel, 0.0, 0.0), (dTravel, 0.0, 0.0))
     add_boundaries(router, modeler, base)
     modeler.push()
     modeler.translate((-1.1, -0.3, 0.42))
@@ -106,11 +118,10 @@ def create_router(parameters, t, router = None):
     return router
 
 def router_parameters(t):
-    position = (0.0, 0.0, 0.0)
-    return position
+    return interpolate(t, (0.0, -2.0), (0.5, 0.0))
 
-def router(t):
-    return create_router(router_parameters, t)
+def router(t, robot=None):
+    return create_router(router_parameters, t, robot)
 
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO, format='%(asctime)s:%(levelname)s:%(module)s:%(lineno)d:%(message)s', datefmt='%H:%M:%S')
@@ -148,7 +159,7 @@ if __name__ == "__main__":
         viewer.set_background_color(np.array((1, 1, 1, 1),np.float32))
 
         logging.info("Render robot animation")
-        t = 0.5
-        viewer.list(robot(t), f"Robot {t:.1f}")
-        viewer.list(router(t), f"Router {t:.1f}")
+        for t in np.linspace(0.0, 1.0, 10):
+            #viewer.list(robot(t), f"Robot {t:.1f}")
+            viewer.list(router(t, robot(t)), f"Router {t:.1f}")
         viewer.mainloop()
