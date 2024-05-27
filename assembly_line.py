@@ -38,7 +38,7 @@ def create_robot(parameters, t, robot = None):
     nearBase = Hyperplane.create_hypercube(((-2.0, 2.0),(1.0, 1.1), (-2.2, -2.0)))
     farBase = Hyperplane.create_hypercube(((-2.0, 2.0),(1.0, 1.1), (2.0, 2.2)))
     crossBeam = Hyperplane.create_hypercube(((-0.1, 0.1),(1.1, 1.4), (-2.2, 2.2)))
-    arm = Hyperplane.create_hypercube(((0.1, 0.3), (-0.8, 1.2), (-0.2, 0.2)))
+    arm = Hyperplane.create_hypercube(((0.1, 0.3), (-0.8, 0.8), (-0.2, 0.2)))
     jaw = Hyperplane.create_hypercube(((0.09, 0.31), (-0.9, -0.8), (-0.35, 0.35)))
     tooth = Hyperplane.create_hypercube(((0.09, 0.31), (-1.4, -0.9), (-0.02, 0.02)))
 
@@ -74,6 +74,7 @@ def robot_parameters(t):
     else:
         travel = interpolate(t, (0.5, -0.2), (1.0, 1.5))
         crossing = interpolate(t, (0.5, 1.5), (1.0, -0.6))
+        bite = interpolate(t, (0.5, 0.27), (1., 0.27))
         if t < 0.75:
             height = interpolate(t, (0.5, 0.8), (0.75, 1.2))
             position = (
@@ -88,7 +89,6 @@ def robot_parameters(t):
                 interpolate(t, (0.75, -0.3), (1.0, -0.6)), 
                 interpolate(t, (0.5, 1.5), (1.0, -0.6))
                 )
-    bite = interpolate(t, (0.5, 0.27), (1., 0.27))
     return (travel, crossing, height, bite, position)
 
 def robot(t):
@@ -121,12 +121,12 @@ def create_router(parameters, t, router = None):
     modeler.translate((travel, 0.0, 0.0), (dTravel, 0.0, 0.0))
     add_boundaries(router, modeler, base)
     modeler.push()
-    modeler.translate((-1.1, -0.3, 0.42))
+    modeler.translate((-1.1, -0.3, 0.45))
     modeler.rotate(2, np.pi / 16)
     add_boundaries(router, modeler, antenna)
     modeler.pop()
     modeler.push()
-    modeler.translate((-1.1, -0.3, -1.62))
+    modeler.translate((-1.1, -0.3, -1.65))
     modeler.rotate(2, np.pi / 16)
     add_boundaries(router, modeler, antenna)
     modeler.pop()
@@ -145,32 +145,37 @@ def router(t, robot=None):
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO, format='%(asctime)s:%(levelname)s:%(module)s:%(lineno)d:%(message)s', datefmt='%H:%M:%S')
     np.set_printoptions(suppress=True)
+    Hyperplane.minSeparation = 0.0001
+    Hyperplane.maxAlignment = 0.9999
 
     option = "draw"
+
     if option == "build":
-        logging.info("Extrude robot1")
-        extruded1 = utils.extrude_time(robot, 0.6, 1.0, 3)
-        logging.info("Extrude robot2")
-        extruded2 = utils.extrude_time(robot, 0.6, 1.0, 3)
+        logging.info("Extrude robot")
+        extrudedRobot = utils.extrude_time(robot, (0.0, 0.5, 0.75, 1.0))
+        logging.info("Extrude router")
+        extrudedRouter = utils.extrude_time(router, (0.0, 0.5, 1.0))
         logging.info("Intersect robots")
-        intersection = extruded1.intersection(extruded2)
+        intersection = extrudedRobot.intersection(extrudedRouter)
         logging.info("Save intersection")
         Solid.save(r"C:\Users\ericb\OneDrive\Desktop\robots_intersection.json", intersection)
 
     elif option == "test":
-        solid = robot(0.8)
         viewer = Viewer()
         viewer.set_background_color(np.array((1, 1, 1, 1),np.float32))
-        logging.info("Extrude robot")
-        extruded1 = utils.extrude_time(robot, (0.0, 1.0))
-        logging.info("Slice intersection")
-        Hyperplane.maxAlignment = 0.9999
-        hyperplane = Hyperplane.create_axis_aligned(4, 3, 0.0)
-        for t in np.linspace(0.02, 0.98, 11):
-            hyperplane._point = t * hyperplane._normal
-            slice = extruded1.slice(hyperplane)
-            logging.info(f"Slice1 {t:.1f}")
-            viewer.list(slice, f"Slice1 {t:.1f}")
+        rob = robot(0.3)
+        viewer.list(rob)
+        rou = router(0.3)
+        viewer.list(rou)
+        cache = {}
+        boundary = rob.boundaries[34]
+        viewer.list(boundary, "B34")
+        slice = rou.slice(boundary.manifold, cache, True)
+        viewer.list(Boundary(boundary.manifold, slice), "B34 Slice")
+        trimmed = boundary.domain.intersection(slice, cache)
+        viewer.list(Boundary(boundary.manifold, trimmed), "B34 Trim")
+        inter = rob.intersection(rou)
+        viewer.list(inter)
         viewer.mainloop()
 
     elif option == "draw":
@@ -179,6 +184,16 @@ if __name__ == "__main__":
 
         logging.info("Render robot animation")
         for t in np.linspace(0.0, 1.0, 11):
-            #viewer.list(robot(t), f"Robot {t:.1f}")
-            viewer.list(router(t, robot(t)), f"Router {t:.1f}")
+            viewer.list(router(t, robot(t)), f"Router {t:.2f}")
+
+        logging.info("Load intersection")
+        [intersection] = Solid.load(r"C:\Users\ericb\OneDrive\Desktop\robots_intersection.json")
+
+        logging.info("Slice intersection")
+        hyperplane = Hyperplane.create_axis_aligned(4, 3, 0.0)
+        for t in np.linspace(0.0, 1.0, 21):
+            hyperplane._point = t * hyperplane._normal
+            slice = intersection.slice(hyperplane)
+            logging.info(f"Intersection {t:.2f}")
+            viewer.list(slice, f"Intersection {t:.2f}")
         viewer.mainloop()
