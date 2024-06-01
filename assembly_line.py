@@ -145,8 +145,6 @@ def router(t, robot=None):
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO, format='%(asctime)s:%(levelname)s:%(module)s:%(lineno)d:%(message)s', datefmt='%H:%M:%S')
     np.set_printoptions(suppress=True)
-    Hyperplane.minSeparation = 0.0001
-    Hyperplane.maxAlignment = 0.9999
 
     option = "draw"
 
