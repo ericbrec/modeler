@@ -156,7 +156,7 @@ if __name__ == "__main__":
         logging.info("Intersect robots")
         intersection = extrudedRobot.intersection(extrudedRouter)
         logging.info("Save intersection")
-        Solid.save(r"C:\Users\ericb\OneDrive\Desktop\robots_intersection.json", intersection)
+        Solid.save(r"C:\Users\ericb\OneDrive\Desktop\assembly_intersection.json", intersection)
 
     elif option == "test":
         viewer = Viewer()
@@ -185,7 +185,7 @@ if __name__ == "__main__":
             viewer.list(router(t, robot(t)), f"Router {t:.2f}")
 
         logging.info("Load intersection")
-        [intersection] = Solid.load(r"C:\Users\ericb\OneDrive\Desktop\robots_intersection.json")
+        [intersection] = Solid.load(r"C:\Users\ericb\OneDrive\Desktop\assembly_intersection.json")
 
         logging.info("Slice intersection")
         hyperplane = Hyperplane.create_axis_aligned(4, 3, 0.0)
